@@ -1,0 +1,23 @@
+# Insurance Policy
+
+init:
+  contract.storage["CUSTOMER"] = 0xb7b2e5e12992267f85455ffee1435f02760402f0
+  contract.storage["CLAIM_ADJUSTER"] = 0xc61185cffa955bd1a6b914a6c616b3cdd5206aa1
+  contract.storage["MONTHLY_PREMIUM"] = 100*10^18
+  # Seconds in a month: 2628000, Seconds since 1970 on 1/1/2014: 1387584000
+  contract.storage["START_DATE"] = 1387584000
+  contract.storage["ARBITRATOR"] = 0x38155ef3698a43b24b054d816a8a5f79fc148623
+code:
+  # Customer calling... with claim evidence provided as the contract input
+  if msg.sender == contract.storage["CUSTOMER"]:
+    # Increment customer's balance with the amount he's sending in
+    contract.storage["CUSTOMER_BALANCE"] = (contract.storage["CUSTOMER_BALANCE"] + msg.value)
+    contract.storage["PROOF_OF_GOOF"] = msg.data[0]
+  # Adjuster calling... with the payout amount as the contract input
+  # (Or it's the arbitrator calling... in the event there was a dispute)
+  if (msg.sender == contract.storage["ARBITRATOR"] or msg.sender == contract.storage["CLAIM_ADJUSTER"]):
+    # label the calculation for elapsed policy months
+    POLICY_MONTHS = ((block.timestamp - contract.storage["START_DATE"]) / 2628000)
+    # when the received premiums have equaled the required premium, the policy is paid up, so pay claim
+    if (contract.storage["CUSTOMER_BALANCE"] / POLICY_MONTHS) >= contract.storage["MONTHLY_PREMIUM"]:
+      send(contract.storage["CUSTOMER"], msg.data[0], (tx.gas - 100))
